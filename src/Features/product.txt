@@ -1,0 +1,20 @@
+api list of product 
+
+addProduct -> add product to the system
+getProduct -> it will get all product
+getOneProduct -> it will get one product on the basic of id
+filterProduct -> it will filter product on the basis of query 
+rateProduct -> it will take rating of product and add it to the productmodel
+
+
+api list of cart
+
+addToCart -> it add product to cart
+getCartItem -> it get product placed in the cart
+removeCartItem -> remove cart item
+
+
+api list for user
+singUp(name,email,password,type) - user for registering the users and after registering they will be able to login in the app
+* type -> (seller,customer)
+singIn(Email,password) - for login user

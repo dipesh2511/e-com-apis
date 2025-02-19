@@ -1,0 +1,91 @@
+import { ObjectId } from "mongodb";
+import { getClient, getDb } from "../../config/mongodb.js";
+import OrderModel from "./order.model.js";
+
+export default class OrderRepository {
+  constructor() {
+    this.collection = "orders";
+  }
+  async placeOrder(user_id) {
+    try {
+      let db = await getDb();
+
+      // 1. get cart items and calculate total amount
+      let result = await this.getTotalAmount(user_id);
+      let total_price = result.reduce((acc, value) => acc + value.itemTotal, 0);
+
+      // 2. create an order record
+      let orderCollection = db.collection(this.collection);
+      let new_order = new OrderModel(user_id, total_price, new Date());
+      let order = await orderCollection.insertOne(new_order);
+
+      // 3. Reduce the stock
+      let productCollection = db.collection("products");
+      result.forEach(async (item) => {
+        await productCollection.updateOne(
+          { _id: new ObjectId(item.product_id) },
+          {$inc : {stock : -item.quantity}}
+        );
+      });
+
+      // 4. Clear the cart items
+      let cartCollection = db.collection("cart");
+      await cartCollection.deleteMany({user_id : new ObjectId(user_id)});
+       
+
+
+      return { total_price, order };
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  async getTotalAmount(user_id) {
+    let db = await getDb();
+    let result = db
+      .collection("cart")
+      .aggregate([
+        // stage 1 get cart items for the user
+        {
+          $match: { user_id: new ObjectId(user_id) },
+        },
+        // stage 2 we'll look for the join in the products table
+        {
+          $lookup: {
+            from: "products",
+            localField: "product_id",
+            foreignField: "_id",
+            as: "product_detail",
+          },
+        },
+        // stage 3 unwind the product_detail
+        {
+          $unwind: "$product_detail",
+        },
+        //stage4  to create a new field with a total of cart items
+        {
+          $addFields: {
+            itemTotal: { $multiply: ["$quantity", "$product_detail.price"] },
+          },
+        },
+        // stage 5 it will group the total and show only those which are imp
+        // {
+        //   $project:{
+        //     itemTotal : 1,
+        //     product_id :1,
+        //     _id : 0
+        //   }
+        // },
+        // {
+        //   $group: {
+        //     _id : null,
+        //     grandTotal: { $sum: "$itemTotal" }, // Total of all grouped items
+        //   },
+        // },
+      ])
+      .toArray();
+    return result;
+  }
+}
+
+above is order repository without transaction
