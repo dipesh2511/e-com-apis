@@ -18,6 +18,7 @@ import jwtMiddleware from './src/middleware/jwt.middleware.js';
 import databaseConnection from './src/config/mongodb.js'
 import databaseConnectionMongoose from './src/config/mongoose.config.js'
 import ApplicationLevelError from './src/dynamicerror/applicationlevelerror.js';
+import likeRouter from './src/Features/like/like.router.js'
 // middlewares imports
 
 // used for basic aunthentication
@@ -61,11 +62,11 @@ server.options('*', (req, res) => {
 server.use(express.urlencoded({ extended: true }));
 server.use(express.json());
 
+
 // manually made logger middlewar
 // server.use(loggerMiddleware)
 
 // winston logger middleware
-
 server.use(express.static(path.join(path.resolve('public', 'html'))))
 server.use("/api-docs", swagger.serve, swagger.setup(apidocs));
 server.use(express.static(path.join(path.resolve(), 'public')));
@@ -75,6 +76,7 @@ server.use(express.static(path.join(path.resolve(), 'public')));
 server.use('/api/product', jwtMiddleware, winstonloggerMiddleware, productRouter);
 server.use('/api/cart', jwtMiddleware, winstonloggerMiddleware, cartRouter);
 server.use('/api/order',jwtMiddleware,winstonloggerMiddleware,orderRouter);
+server.use('/api/like',jwtMiddleware,winstonloggerMiddleware,likeRouter);
 server.use('/api/user', userRouter);
 
 

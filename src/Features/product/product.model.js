@@ -1,24 +1,24 @@
 import UserModel from "../user/user.model.js";
 
 export default class ProductModel {
-  constructor(location, name, desc, imageUrl, category, price ,stock , sizes = null) {
+  constructor(location, name, desc, imageUrl, categories, price ,stock , sizes = null) {
     this.location = location;
     this.name = name;
     this.desc = desc;
     this.imageUrl = imageUrl;
-    this.category = category;
+    this.categories = categories;
     this.price = price;
     this.stock = stock;
     this.sizes = sizes;
   }
 
-  static add(location, name, desc, imageUrl, category, price, stock,sizes) {
+  static add(location, name, desc, imageUrl, categories, price, stock,sizes) {
     let newProduct = new ProductModel(
       location,
       name,
       desc,
       imageUrl,
-      category,
+      categories,
       price,
       stock,
       sizes

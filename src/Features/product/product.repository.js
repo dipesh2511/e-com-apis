@@ -1,96 +1,108 @@
 import { ObjectId } from "mongodb";
 import { getDb } from "../../config/mongodb.js";
-import { type } from "os";
-import { get } from "http";
+import { ProductSchema } from "./product.schema.js";
+import mongoose, { mongo } from "mongoose";
+import { ReviewSchema } from "./review.schema.js";
+import { CategoryModel, CategorySchema } from "./category.schema.js";
 export default class ProductRepository {
-    async getAll() {
-        try {
-            let db = await getDb();
-            let collection = db.collection('products');
-            // return await collection.find().project({sizes:{$slice : 3},price:1,name:1,_id:0,ratings:1}).toArray();
-            return await collection.find().sort({price:1}).toArray();
-        } catch (err) {
-            console.log(err)
-        }
-    }
-    async addProduct(new_product) {
-        try {
-            let db = await getDb();
-            let collection = db.collection('products');
-            return await collection.insertOne(new_product);
-        } catch (err) {
-            console.log(err);
-        }
-    }
-    async oneProduct(id) {
-        try {
-            let db = await getDb();
-            let collection = db.collection('products');
-            return await collection.findOne({ _id: new ObjectId(id) });
-        } catch (err) {
-            console.log(err);
-        }
-    }
-    async rate(user_id, product_id, rating) {
-        
-        try {
-            let db = await getDb();
-            let collection = db.collection('products');
-            // 1. find product using productid
-            let product = await collection.findOne({ _id: new ObjectId(product_id)});
+  constructor() {
+    this.productModel = mongoose.model("products", ProductSchema);
+    this.reviewModel = mongoose.model("reviews", ReviewSchema);
+    this.CategoryModel = CategoryModel;
+  }
 
-            // 2.cheking is product exist or not using ? then checking if product have ratings array or not using ? then finding the rating object with matches the product id and userid
-            const userRating = product?.ratings?.find((rating) => {
-                return rating.user_id == user_id
-            })
-             
-            if (userRating) {
-                return await collection.updateOne({
-                    _id: new ObjectId(product_id),
-                    "ratings.user_id": user_id
-                }, {
-                    $set: { "ratings.$.rating": rating }
-                })
-            } else {
-                return await collection.updateOne(
-                    { _id : new ObjectId(product_id) },
-                    {
-                        $push: {
-                            "ratings": {
-                                user_id: user_id,
-                                rating: rating
-                            }
-                        }
-                    });
-            }
-
-        } catch (err) {
-            console.log(err);
-        }
+  async getAll() {
+    try {
+      let result = await this.productModel.find().populate("ratings");
+      return result;
+    } catch (err) {
+      console.log(err);
     }
+  }
+  async addProduct(new_product) {
+    try {
+      // add new product
+      let product = new this.productModel(new_product);
+      product.categories = new_product.categories
+        .split(",")
+        .map((r) => r.trim());
+      let saved_product = await product.save();
 
-    async filter(filter) {
-        try {
-            let db = await getDb();
-            let collection = db.collection('products');
-            // return await collection.find(filter).project({name:1,price:1,rating:1}).toArray();
-            return await collection.find(filter).toArray();
-        } catch (err) {
-            console.log(err);
-        }
+      //update review repository
+      await this.CategoryModel.updateMany(
+        { _id: { $in: product.categories } },
+        { $push: { products: new ObjectId(saved_product._id) } },
+      );
+    } catch (err) {
+      console.log(err);
     }
+  }
+  async oneProduct(id) {
+    try {
+      let result = await this.productModel
+        .findOne({ _id: new ObjectId(id) })
+        .populate("ratings","categories");
+      return result;
+    } catch (err) {
+      console.log(err);
+    }
+  }
 
-    async averagePricePerCategory(){
-        try {
-            let db =  await getDb();
-            return await db.collection('products').aggregate([
-                {
-                    $group:{_id : "$category" , averagePrice : {$avg : "$price"}}
-                }
-            ]).toArray()
-            
-        } catch (error) {
-            console.log(error)
-        }
+  async rate(user_id, product_id, rating) {
+    try {
+      // 1. Find the product
+      let product = await this.productModel.findOne({
+        _id: new ObjectId(product_id),
+      });
+
+      if (!product) {
+        throw new Error("Product not found");
+      }
+
+      // 2. Check if the user has already rated the product
+      let rated_product = await this.reviewModel.findOne({
+        user_id: new ObjectId(user_id),
+        product_id: new ObjectId(product_id),
+      });
+
+      if (rated_product) {
+        // 3. Update existing rating
+        rated_product.rating = rating;
+        await rated_product.save();
+      } else {
+        // 4. Create new review
+        let new_review = new this.reviewModel({
+          user_id: new ObjectId(user_id),
+          product_id: new ObjectId(product_id),
+          rating: rating,
+        });
+        await new_review.save();
+
+        // 5. Push the new review's ObjectId into the product's ratings array
+        await this.productModel.findByIdAndUpdate(
+          product_id,
+          { $push: { ratings: new_review._id } },
+          { new: true }
+        );
+      }
+    } catch (err) {
+      console.log(err);
     }
+  }
+
+  async averagePricePerCategory() {
+    try {
+      let db = await getDb();
+      return await db
+        .collection("products")
+        .aggregate([
+          {
+            $group: { _id: "$category", averagePrice: { $avg: "$price" } },
+          },
+        ])
+        .toArray();
+    } catch (error) {
+      console.log(error);
+    }
+  }
 }

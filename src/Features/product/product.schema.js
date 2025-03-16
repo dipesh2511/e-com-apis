@@ -1,13 +1,14 @@
 import mongoose from "mongoose";
 import { Schema } from "mongoose";
 
-export const  productSchema = new Schema({
-    location : String, 
-    name : String,
-    desc: String,
-    imageUrl: String,
-    category: String,
-    price: Number,
-    stock: Number,
-    sizes: String
+export const ProductSchema = new Schema({
+  location: String,
+  name: String,
+  desc: String,
+  imageUrl: String,
+  price: Number,
+  stock: Number,
+  sizes: String,
+  ratings: [{ type: Schema.Types.ObjectId, ref: "reviews" }],
+  categories: [{ type: Schema.Types.ObjectId, ref: "category" }],
 });

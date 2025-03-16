@@ -17,15 +17,15 @@ export default class ProductController {
   }
 
   async addProduct(req, res) {
-    let { name, desc, imageUrl, category, price, stock,sizes } = req.body;
-    let location = `resume/${req.file.filename}`;
+    let { name, desc, imageUrl, categories, price, stock,sizes } = req.body;
+    let location = `resume/${req.file?.filename}`;
     let splitSizes = !sizes ? (sizes = null) : sizes.split(",");
     let result = ProductModel.add(
       location,
       name,
       desc,
       imageUrl,
-      category,
+      categories,
       price,
       stock,
       splitSizes
