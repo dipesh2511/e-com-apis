@@ -1,4 +1,4 @@
-{
+let apidocs = {
     "openapi": "3.0.0",
     "info": {
         "title": "Api for the e-com website",
@@ -484,3 +484,5 @@
         }
     }
 }
+
+export default apidocs;
